@@ -44,7 +44,9 @@ def add_layer(layer):
             yield line
         yield """{0}.add({1}); // add {1} to layer
         """.format(layer_id, _elem_id(child))
-
+    if "transform" in layer.attrib:
+        for line in transform_element(layer):
+            yield line
     yield """stage.add({0}); // add the layer to the stage
     """.format(layer_id)
 
@@ -74,7 +76,7 @@ def paint_rect(rect):
         width: {width},
         height: {height},
         }});
-    """.format(_elem_id(rect),x=x+width/2, y=y+height/2, width=width, height=height)
+    """.format(_elem_id(rect),x=x, y=y, width=width, height=height)
 
 def paint_text(text):
     yield """var {0} = new Kinetic.Text({{
@@ -120,14 +122,15 @@ def matrix_transform_element(element):
     """.format(id=_elem_id(element), tx=translate_x, ty=translate_y,
          angle=angle, sx=scale_x, sy=scale_y)
 
-painter_by_tagname = {
-    '{http://www.w3.org/2000/svg}g': paint_group,
+_group_tag = '{http://www.w3.org/2000/svg}g'
+_painter_by_tagname = {
+    _group_tag: paint_group,
     '{http://www.w3.org/2000/svg}path': paint_path,
     '{http://www.w3.org/2000/svg}rect': paint_rect,
     '{http://www.w3.org/2000/svg}text': paint_text,
     }
 def paint_element(element):
-    for line in painter_by_tagname[element.tag](element):
+    for line in _painter_by_tagname[element.tag](element):
         yield line
     if 'style' in element.attrib:
         for line in apply_style(element):
@@ -139,17 +142,19 @@ def paint_element(element):
 def apply_style(element):
     id = _elem_id(element)
     style = parseStyle(element.attrib['style'])
-    if 'fill' in style:
-        yield """{id}.setFill('{fill_color}');
-        """.format(id=id, fill_color=style['fill'])
-    if 'stroke' in style and style['stroke'] != 'none':
-        yield """{id}.setStroke('{stroke_color}');
-        """.format(id=id, stroke_color=style['stroke'])
-
+    if element.tag != _group_tag:
+        if 'fill' in style:
+            yield """{id}.setFill('{fill_color}');
+            """.format(id=id, fill_color=style['fill'])
+        if 'stroke' in style and style['stroke'] != 'none':
+            yield """{id}.setStroke('{stroke_color}');
+            """.format(id=id, stroke_color=style['stroke'])
+    if 'opacity' in style:
+        yield"""{id}.setOpacity({opacity});
+        """.format(id=id, opacity=style['opacity'])
 
 if __name__ == '__main__':
-    svg_filename='/home/user/Pictures/drawing.svg'
-    canvas_js_filename = '/home/user/workspace/inkinetic/canvas.js'
+    svg_filename='drawing.svg'
+    canvas_js_filename = 'canvas.js'
     create_canvas_js_file(svg_filename, canvas_js_filename)
-
 
