@@ -42,10 +42,10 @@ def add_layer(layer):
     for child in layer.getchildren():
         for line in paint_element(child):
             yield line
-        yield """{0}.add({1}) // add {1} to layer
+        yield """{0}.add({1}); // add {1} to layer
         """.format(layer_id, _elem_id(child))
 
-    yield """stage.add({0}) // add the layer to the stage
+    yield """stage.add({0}); // add the layer to the stage
     """.format(layer_id)
 
 def paint_group(group):
@@ -55,7 +55,7 @@ def paint_group(group):
     for child_element in group.getchildren():
         for line in paint_element(child_element):
             yield line
-        yield """{0}.add({1}) // add to the {0} group
+        yield """{0}.add({1}); // add to the {0} group
         """.format(group_id, _elem_id(child_element))
 
 def paint_path(path):
@@ -63,7 +63,6 @@ def paint_path(path):
         x: {x},
         y: {y},
         data: "{data}",
-        fill: 'green'
         }});
     """.format(_elem_id(path), data = path.attrib['d'], x=0, y=0)
 
@@ -74,7 +73,6 @@ def paint_rect(rect):
         y: {y},
         width: {width},
         height: {height},
-        fill: 'red'
         }});
     """.format(_elem_id(rect),x=x+width/2, y=y+height/2, width=width, height=height)
 
@@ -83,7 +81,6 @@ def paint_text(text):
         x:10,
         y:10,
         text:"Hello",
-        fill:'red',
         fontSize:20
         }});
     """.format(_elem_id(text))
@@ -132,13 +129,27 @@ painter_by_tagname = {
 def paint_element(element):
     for line in painter_by_tagname[element.tag](element):
         yield line
+    if 'style' in element.attrib:
+        for line in apply_style(element):
+            yield line
     if "transform" in element.attrib:
         for line in transform_element(element):
             yield line
 
+def apply_style(element):
+    id = _elem_id(element)
+    style = parseStyle(element.attrib['style'])
+    if 'fill' in style:
+        yield """{id}.setFill('{fill_color}');
+        """.format(id=id, fill_color=style['fill'])
+    if 'stroke' in style and style['stroke'] != 'none':
+        yield """{id}.setStroke('{stroke_color}');
+        """.format(id=id, stroke_color=style['stroke'])
+
+
 if __name__ == '__main__':
     svg_filename='/home/user/Pictures/drawing.svg'
-    canvas_js_filename = '/home/user/workspace/export_to_canvas/canvas.js'
+    canvas_js_filename = '/home/user/workspace/inkinetic/canvas.js'
     create_canvas_js_file(svg_filename, canvas_js_filename)
 
 
