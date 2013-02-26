@@ -149,12 +149,40 @@ def apply_style(element):
         if 'stroke' in style and style['stroke'] != 'none':
             yield """{id}.setStroke('{stroke_color}');
             """.format(id=id, stroke_color=style['stroke'])
+        if 'stroke-width' in style:
+            sw = style['stroke-width']
+            sw = sw[:-2] if sw.endswith('px') else sw
+            yield """{id}.setStrokeWidth({sw});
+            """.format(id=id, sw=sw)
+        if 'stroke-linejoin' in style:
+            yield """{id}.setLineJoin('{lj}');
+            """.format(id=id, lj=style['stroke-linejoin'])
+        if 'stroke-linecap' in style:
+            yield """{id}.setLineCap('{lc}');
+            """.format(id=id, lc=style['stroke-linecap'])
     if 'opacity' in style:
         yield"""{id}.setOpacity({opacity});
         """.format(id=id, opacity=style['opacity'])
 
+
 if __name__ == '__main__':
-    svg_filename='drawing.svg'
-    canvas_js_filename = 'canvas.js'
-    create_canvas_js_file(svg_filename, canvas_js_filename)
+    import shutil
+    import os.path
+    j = lambda f: os.path.join(os.getcwd(), f)
+    k = lambda f: os.path.join(os.path.dirname(os.path.realpath(__file__)), f)
+    if len(sys.argv) == 2:
+        svg = sys.argv[1]
+    else:
+        svg = j('drawing.svg')
+    js = j('canvas.js')
+    if not os.path.exists(j('motion.js')):
+        with open(j('motion.js'), 'w') as mjs:
+            mjs.write("// Make things move in this file.")
+    create_canvas_js_file(svg, js)
+    # copy boilerplate files
+    def copy_from_installdir(filename):
+        if not os.path.exists(j(filename)):
+            shutil.copy(k(filename), j(filename))
+    copy_from_installdir('canvas.html')
+    copy_from_installdir('kinetic-v4.3.3.min.js')
 
