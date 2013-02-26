@@ -54,10 +54,4 @@ var layer1 = new Kinetic.Layer();
 layer1.setAbsolutePosition(68.57143, -663.78941);
 stage.add(layer1); // add the layer to the stage
 
-moveWolk = function(){
-	wolk.setX(-500);
-	wolk.setOpacity(0.5);
-	wolk.transitionTo({duration:90, callback:moveWolk, x:200, opacity:1,});
-}
 
-moveWolk();
