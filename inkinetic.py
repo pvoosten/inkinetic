@@ -6,9 +6,13 @@ import inkex
 from simplestyle import *
 from textwrap import dedent
 from math import sqrt, acos
+import json
 
 def _elem_id(el):
     return el.attrib['id'].replace('-', '_')
+
+def inkscape(localname):
+    return '{{http://www.inkscape.org/namespaces/inkscape}}{}'.format(localname)
 
 def get_layers(effect):
     return effect.document.xpath("/*[local-name()='svg']/*[local-name()='g']")
@@ -34,77 +38,65 @@ def create_canvas_js_file(svg_filename, canvas_js_filename):
 
 def add_layer(layer):
     layer_id = _elem_id(layer)
+    conf = {'id': layer_id,}
+    set_transform(layer, conf)
     yield """
     // Create a new layer
-    var {0} = new Kinetic.Layer();
-    """.format(layer_id)
+    var {0} = new Kinetic.Layer({1});
+    """.format(layer_id, json.dumps(conf))
 
     for child in layer.getchildren():
         for line in paint_element(child):
             yield line
         yield """{0}.add({1}); // add {1} to layer
         """.format(layer_id, _elem_id(child))
-    if "transform" in layer.attrib:
-        for line in transform_element(layer):
-            yield line
     yield """stage.add({0}); // add the layer to the stage
     """.format(layer_id)
 
-def paint_group(group):
+def paint_group(group, conf):
     group_id = _elem_id(group)
-    yield """var {0} = new Kinetic.Group();
-    """.format(group_id)
+    yield """var {0} = new Kinetic.Group({1});
+    """.format(group_id, json.dumps(conf))
     for child_element in group.getchildren():
         for line in paint_element(child_element):
             yield line
         yield """{0}.add({1}); // add to the {0} group
         """.format(group_id, _elem_id(child_element))
 
-def paint_path(path):
-    yield """var {0} = new Kinetic.Path({{
-        x: {x},
-        y: {y},
-        data: "{data}",
-        }});
-    """.format(_elem_id(path), data = path.attrib['d'], x=0, y=0)
+def paint_path(path, conf):
+    conf['x'] = 0
+    conf['y'] = 0
+    conf['data'] = path.attrib['d']
+    yield """var {0} = new Kinetic.Path({1});
+    """.format(_elem_id(path), json.dumps(conf))
 
-def paint_rect(rect):
-    x, y, width, height = (float(rect.attrib[s]) for s in ('x', 'y', 'width', 'height'))
-    yield """var {0} = new Kinetic.Rect({{
-        x: {x},
-        y: {y},
-        width: {width},
-        height: {height},
-        }});
-    """.format(_elem_id(rect),x=x, y=y, width=width, height=height)
+def paint_rect(rect, conf):
+    for s in ('x', 'y', 'width', 'height'):
+        conf[s] = float(rect.attrib[s])
+    yield """var {0} = new Kinetic.Rect({1});
+    """.format(_elem_id(rect), json.dumps(conf))
 
-def paint_text(text):
-    yield """var {0} = new Kinetic.Text({{
-        x:10,
-        y:10,
-        text:"Hello",
-        fontSize:20
-        }});
-    """.format(_elem_id(text))
+def paint_text(text, conf):
+    conf.update(x = 10, y=10, fontSize=20, text='Hello')
+    yield """var {0} = new Kinetic.Text({1});
+    """.format(_elem_id(text), json.dumps(conf))
 
-def transform_element(element):
+def set_transform(element, conf):
     tf_string = element.attrib['transform']
     if tf_string.startswith("matrix("):
-        return matrix_transform_element(element)
+        set_matrix_transform(element, conf)
     elif tf_string.startswith("translate("):
-        return translate_transform_element(element)
+        set_translate_transform(element, conf)
 
-def translate_transform_element(element):
+def set_translate_transform(element, conf):
     tf_string = element.attrib['transform'][10:-1]
-    tx, ty = (float(x) for x in tf_string.split(','))
-    yield """{id}.setAbsolutePosition({tx}, {ty});
-    """.format(id=_elem_id(element), tx=tx, ty=ty)
+    conf['x'], conf['y'] = (float(x) for x in tf_string.split(','))
 
-def matrix_transform_element(element):
+def set_matrix_transform(element, conf):
     tf_string = element.attrib['transform'][7:-1]
     m = [float(x) for x in tf_string.split(',')]
-    translate_x = m[4]
-    translate_y = m[5]
+    conf['x'], conf['y'] = m[4], m[5]
+    conf['scale'] = {}
     scale_x = sqrt(m[0]*m[0] + m[1]*m[1])
     scale_y = sqrt(m[2]*m[2] + m[3]*m[3])
     if m[0]*m[3] - m[1]*m[2] < 0:
@@ -112,15 +104,11 @@ def matrix_transform_element(element):
     if m[0] < 0:
         scale_x = -scale_x
         scale_y = -scale_y
+    conf['scale'] = {'x': scale_x, 'y': scale_y}
     angle = acos(m[3] / scale_y)
     if m[2]/scale_y > 0:
         angle = -angle
-
-    yield """{id}.setAbsolutePosition({tx}, {ty});
-    {id}.setRotation({angle});
-    {id}.setScale({sx}, {sy});
-    """.format(id=_elem_id(element), tx=translate_x, ty=translate_y,
-         angle=angle, sx=scale_x, sy=scale_y)
+    conf['rotation'] = angle
 
 _group_tag = '{http://www.w3.org/2000/svg}g'
 _painter_by_tagname = {
@@ -129,41 +117,34 @@ _painter_by_tagname = {
     '{http://www.w3.org/2000/svg}rect': paint_rect,
     '{http://www.w3.org/2000/svg}text': paint_text,
     }
-def paint_element(element):
-    for line in _painter_by_tagname[element.tag](element):
-        yield line
-    if 'style' in element.attrib:
-        for line in apply_style(element):
-            yield line
-    if "transform" in element.attrib:
-        for line in transform_element(element):
-            yield line
 
-def apply_style(element):
+def paint_element(element):
+    conf = {'id':_elem_id(element)}
+    if 'style' in element.attrib:
+        apply_style(element, conf)
+    if 'transform' in element.attrib:
+        set_transform(element, conf)
+    for line in _painter_by_tagname[element.tag](element, conf):
+        yield line
+
+def apply_style(element, conf):
+    def copy_style(conf_att, style_prop,
+        style_type=unicode, condition=lambda x:True):
+        if style_prop in style and condition(style[style_prop]):
+            st = style_type(style[style_prop])
+            conf[conf_att] = style[style_prop]
     id = _elem_id(element)
     style = parseStyle(element.attrib['style'])
     if element.tag != _group_tag:
-        if 'fill' in style:
-            yield """{id}.setFill('{fill_color}');
-            """.format(id=id, fill_color=style['fill'])
-        if 'stroke' in style and style['stroke'] != 'none':
-            yield """{id}.setStroke('{stroke_color}');
-            """.format(id=id, stroke_color=style['stroke'])
+        copy_style('fill', 'fill')
+        copy_style('lineJoin', 'stroke-linejoin')
+        copy_style('lineCap', 'stroke-linecap')
+        copy_style('stroke', 'stroke', condition = lambda x: x != 'none')
         if 'stroke-width' in style:
             sw = style['stroke-width']
             sw = sw[:-2] if sw.endswith('px') else sw
-            yield """{id}.setStrokeWidth({sw});
-            """.format(id=id, sw=sw)
-        if 'stroke-linejoin' in style:
-            yield """{id}.setLineJoin('{lj}');
-            """.format(id=id, lj=style['stroke-linejoin'])
-        if 'stroke-linecap' in style:
-            yield """{id}.setLineCap('{lc}');
-            """.format(id=id, lc=style['stroke-linecap'])
-    if 'opacity' in style:
-        yield"""{id}.setOpacity({opacity});
-        """.format(id=id, opacity=style['opacity'])
-
+            conf['strokeWidth'] = float(sw)
+    copy_style('opacity', 'opacity', float)
 
 if __name__ == '__main__':
     import shutil
