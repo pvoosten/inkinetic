@@ -23,5 +23,3 @@ turn = function(){
 
 turn();
 
-
-
