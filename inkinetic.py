@@ -64,8 +64,6 @@ def paint_group(group, conf):
         """.format(group_id, _elem_id(child_element))
 
 def paint_path(path, conf):
-    conf['x'] = 0
-    conf['y'] = 0
     conf['data'] = path.attrib['d']
     yield """var {0} = new Kinetic.Path({1});
     """.format(_elem_id(path), json.dumps(conf))
@@ -151,10 +149,10 @@ if __name__ == '__main__':
     import os.path
     j = lambda f: os.path.join(os.getcwd(), f)
     k = lambda f: os.path.join(os.path.dirname(os.path.realpath(__file__)), f)
+    svg = j('drawing.svg')
     if len(sys.argv) == 2:
-        svg = sys.argv[1]
-    else:
-        svg = j('drawing.svg')
+        orig_svg = sys.argv[1]
+        shutil.copy(orig_svg, svg)	
     js = j('canvas.js')
     if not os.path.exists(j('motion.js')):
         with open(j('motion.js'), 'w') as mjs:
