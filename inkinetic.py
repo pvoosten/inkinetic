@@ -125,6 +125,49 @@ def paint_element(element):
     for line in _painter_by_tagname[element.tag](element, conf):
         yield line
 
+def gradient_fill(element, conf):
+    if conf['fill'].startswith('url('):
+        # get the linear or radial gradient fill element
+        gradient_id = conf['fill'][5:-1]
+        gradient_el = element.xpath("//*[@id='{}']".format(gradient_id))[0]
+        if gradient_el.tag == '{http://www.w3.org/2000/svg}radialGradient':
+            radial_gradient_fill(gradient_el, conf)
+        elif gradient_el.tag == '{http://www.w3.org/2000/svg}linearGradient':
+            linear_gradient_fill(gradient_el, conf)
+
+def radial_gradient_fill(gradient_el, conf):
+    cx, cy, fx, fy, r, href = (gradient_el.attrib[nm]
+        for nm in ('cx', 'cy', 'fx', 'fy', 'r',
+            '{http://www.w3.org/1999/xlink}href'))
+    conf.update({
+        "fillPriority": "radial-gradient",
+        "fill": "#FFFFFF",
+        "fillRadialGradientStartPoint" : {"x": cx, "y": cy},
+        "fillRadialGradientEndPoint" : {"x": fx, "y": fy},
+        "fillRadialGradientStartRadius" : 0,
+        "fillRadialGradientEndRadius" : r,
+        "fillRadialGradientColorStops": color_stops(gradient_el, href)
+      })
+
+def color_stops(gradient_el, href = None):
+    colors_el = gradient_el
+    if href:
+        colors_el = gradient_el.xpath("//*[@id='{}']".format(href[1:]))[0]
+    color_list = []
+    stops = colors_el.xpath("*[local-name()='stop']")
+    for stop in stops:
+        style = parseStyle(stop.attrib['style'])
+        r, g, b = parseColor(style['stop-color'])
+        a = style['stop-opacity']
+        color_list.append(stop.attrib['offset'])
+        color_list.append('rgba({},{},{},{})'.format(r, g, b, a))
+    return color_list
+
+def linear_gradient_fill(gradient_el, conf):
+    pass
+
+
+
 def apply_style(element, conf):
     def copy_style(conf_att, style_prop,
         style_type=unicode, condition=lambda x:True):
@@ -135,6 +178,7 @@ def apply_style(element, conf):
     style = parseStyle(element.attrib['style'])
     if element.tag != _group_tag:
         copy_style('fill', 'fill')
+        gradient_fill(element, conf)
         copy_style('lineJoin', 'stroke-linejoin')
         copy_style('lineCap', 'stroke-linecap')
         copy_style('stroke', 'stroke', condition = lambda x: x != 'none')
