@@ -214,7 +214,8 @@ if __name__ == '__main__':
     import shutil
     import os.path
     j = lambda f: os.path.join(os.getcwd(), f)
-    k = lambda f: os.path.join(os.path.dirname(os.path.realpath(__file__)), f)
+    k = lambda f: os.path.join(os.path.dirname(os.path.realpath(__file__)), 
+        'tools', 'kinetic', f)
     svg = j('drawing.svg')
     if len(sys.argv) == 2:
         orig_svg = sys.argv[1]
