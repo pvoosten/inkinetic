@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!--
+Inkinetic. Convert SVG to HTML5 canvas.
+Copyright (C) 2013 Philip van Oosten
+
+This file is part of Inkinetic.
+
+Inkinetic is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+Foobar is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with Inkinetic.  If not, see <http://www.gnu.org/licenses/>.
+-->
+<html>
+<head>
+<script src=kinetic-v4.3.3.min.js></script>
+<title>Inkinetic output</title>
+<style>
+img,canvas { border: 5px solid black; }
+</style>
+</head>
+<body>
+<h1>The exquisite graphical designer</h1>
+<a href=http://inkscape.org>Inkscape</a>
+<h1>The original SVG</h1>
+<img src=drawing.svg></img>
+<h1>The canvas created with Inkinetic</h1>
+<h2>Using Kinetic.js</h2>
+<div id=comments>There are no comments</div>
+<div id=container></div>
+<script src=canvas.js></script>
+<script src=motion.js></script>
+</body>
+</html>
+
