@@ -80,6 +80,8 @@ def paint_text(text, conf):
     """.format(_elem_id(text), json.dumps(conf))
 
 def set_transform(element, conf):
+    if 'transform' not in element.attrib:
+        return
     tf_string = element.attrib['transform']
     if tf_string.startswith("matrix("):
         set_matrix_transform(element, conf)
@@ -126,7 +128,7 @@ def paint_element(element):
         yield line
 
 def gradient_fill(element, conf):
-    if conf['fill'].startswith('url('):
+    if 'fill' in conf and conf['fill'].startswith('url('):
         # get the linear or radial gradient fill element
         gradient_id = conf['fill'][5:-1]
         gradient_el = element.xpath("//*[@id='{}']".format(gradient_id))[0]
