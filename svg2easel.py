@@ -1,3 +1,4 @@
+#!/usr/bin/env python
 """
 Inkinetic. Convert SVG to HTML5 canvas.
 Copyright (C) 2013 Philip van Oosten
@@ -20,6 +21,5 @@ along with Inkinetic.  If not, see <http://www.gnu.org/licenses/>.
 @author: Philip van Oosten (@pvoosten)
 
 """
-
-
+from inkinetic import *
 
